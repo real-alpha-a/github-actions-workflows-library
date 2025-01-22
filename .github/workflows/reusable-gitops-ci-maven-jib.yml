@@ -1,0 +1,187 @@
+name: Reusable GitOps CI Maven Jib
+
+on:
+  workflow_call:
+    inputs:
+      dotenv-path:
+        required: false
+        type: string
+        default: '.github/.env'
+        description: 'Path to the dotenv file containing environment variables'
+      always-publish:
+        required: true
+        type: boolean
+        default: true
+        description: 'Whether to always publish the Docker image'
+      always-scan:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to always scan the code'
+      ci-build-args:
+        required: false
+        type: string
+        default: 'clean install'
+        description: 'Maven build arguments'
+      java-version:
+        required: false
+        type: string
+        default: '17'
+        description: 'Java version to use for the build'
+      jib-from-image:
+        required: false
+        type: string
+        default: 'eclipse-temurin:17-jre-jammy'
+        description: 'Base image for Jib containerization'
+      jfrog-cli-version:
+        required: false
+        type: string
+        default: 'latest'
+        description: 'Version of JFrog CLI to install'
+      jfrog-ci-watch:
+        required: false
+        type: string
+        default: 'ci-build-scan'
+        description: 'JFrog CI watch identifier'
+      jfrog-ci-fail:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to fail the build on JFrog CI issues'
+      sonar-qualitygate-wait:
+        required: false
+        type: boolean
+        default: false
+        description: 'Wait for SonarQube quality gate results'
+      sonar-scan-dir:
+        required: false
+        type: string
+        default: 'target/classes'
+        description: 'Directory to scan with SonarQube'
+      timeout-minutes:
+        required: false
+        type: number
+        default: 30
+        description: 'Timeout for the job in minutes'
+    secrets:
+      ARTIFACTORY_USERNAME:
+        required: true
+      ARTIFACTORY_API_KEY:
+        required: true
+      GITHUB_CI_APP_ID:
+        required: true
+      GITHUB_CI_APP_PRIVATE_KEY:
+        required: true
+      SONAR_TOKEN:
+        required: true
+      DT_TOKEN:
+        required: false
+
+env:
+  DT_TOKEN: ${{ secrets.DT_TOKEN }}
+  PUBLISH_IMAGE: true
+  SCAN_CODE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.always-scan }}
+
+jobs:
+  build-and-test:
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout Repository
+      id: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ fromJSON('["1", "0"]') [env.SCAN_CODE == 'true'] }}
+
+    - name: Read Project Properties
+      id: props
+      uses: falti/dotenv-action@v1.0.4
+      with:
+        path: ${{ inputs.dotenv-path }}
+        log-variables: true
+
+    - name: Configure Workflow Environment
+      id: config
+      uses: mahajanatul525/github-actions-library/configure-workflow@master
+      with:
+        team: ${{ steps.props.outputs.team }}
+        keysystem: ${{ steps.props.outputs.keysystem }}
+        application-name: ${{ steps.props.outputs.application_name }}
+        docker-namespace: ${{ steps.props.outputs.docker_namespace }}
+        artifactory-username: ${{ secrets.ARTIFACTORY_USERNAME }}
+        artifactory-api-key: ${{ secrets.ARTIFACTORY_API_KEY }}
+        deployment-repo: ${{ steps.props.outputs.deployment_repo }}
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: maven
+
+    - name: Configure Maven Environment
+      id: configure-maven
+      uses: mahajanatul525/github-actions-library/configure-maven@master
+      with:
+        repository-base: https://trialt6dmgx.jfrog.io
+        mirror-url: https://trialt6dmgx.jfrog.io/artifactory/aigi-dstores-maven-dev
+        release-url: https://trialt6dmgx.jfrog.io/artifactory/aigi-dstores-maven-release-local/
+        snapshot-url: https://trialt6dmgx.jfrog.io/artifactory/aigi-dstores-maven-snapshot-local/
+        username: ${{ secrets.ARTIFACTORY_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_API_KEY }}
+
+    - name: Build and Test
+      id: build-and-test
+      run: |
+        echo "Starting Maven build and test"
+        mvn -B -V -e -Dstyle.color=always ${{ inputs.ci-build-args }} jib:dockerBuild \
+        -Djib.container.labels="keysystem=${{ steps.config.outputs.docker-label-keysystem }}, owner=${{ steps.config.outputs.docker-label-owner }}" \
+        -Djib.from.image=${{ inputs.jib-from-image }} \
+        -Djib.to.image=${{ steps.config.outputs.docker-snapshot-image-base}}:${{ steps.config.outputs.docker-sha-tag}}
+        echo "Build and test completed"
+
+    - name: Install JFrog CLI
+      if: ${{ success() && env.SCAN_CODE == 'true' }}
+      uses: jfrog/setup-jfrog-cli@v4.4.2
+      with:
+        version: ${{ inputs.jfrog-cli-version }}
+
+    - name: Publish Docker Image
+      if: ${{ success() && env.PUBLISH_IMAGE == 'true' }}
+      id: publish-image
+      env:
+        SKOPEO_ARGS: --src-creds ${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_API_KEY }} --dest-creds ${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_API_KEY }}
+        DOCKER_SNAPSHOT_SHA_TAG: ${{ steps.config.outputs.docker-snapshot-image-base }}:${{ steps.config.outputs.docker-sha-tag }}
+        DOCKER_SNAPSHOT_REF_TAG: ${{ steps.config.outputs.docker-snapshot-image-base }}:${{ steps.config.outputs.docker-ref-tag }}
+        DOCKER_SNAPSHOT_BUILD_TAG: ${{ steps.config.outputs.docker-snapshot-image-base }}:${{ steps.config.outputs.docker-build-tag }}
+      run: |
+          echo "Publishing Docker images to Artifactory"
+          skopeo copy docker-daemon:$DOCKER_SNAPSHOT_SHA_TAG docker://$DOCKER_SNAPSHOT_SHA_TAG $SKOPEO_ARGS
+          skopeo copy docker://$DOCKER_SNAPSHOT_SHA_TAG docker://$DOCKER_SNAPSHOT_REF_TAG $SKOPEO_ARGS
+          skopeo copy docker://$DOCKER_SNAPSHOT_SHA_TAG docker://$DOCKER_SNAPSHOT_BUILD_TAG $SKOPEO_ARGS
+          echo "Docker images published successfully"
+
+    - name: Notify Deployment Repository
+      if: ${{ success() && env.PUBLISH_IMAGE == 'true' }}
+      uses: peter-evans/repository-dispatch@v2
+      id: notify-deployment-repository
+      with:
+        repository: ${{ steps.props.outputs.deployment_repo }}
+        token: ${{ secrets.GITHUB_CI_APP_PRIVATE_KEY }}
+        event-type: ci-notification
+        client-payload: |
+          {
+            "github": {
+              "team": "${{ steps.props.outputs.team }}",
+              "application-name": "${{ steps.props.outputs.application_name}}",
+              "repository": "${{ github.repository }}",
+              "ref": "${{ github.ref }}"
+            },
+            "image": {
+              "base": "${{ steps.config.outputs.docker-snapshot-image-base }}",
+              "ref_tag": "${{ steps.config.outputs.docker-ref-tag }}",
+              "sha_tag": "${{ steps.config.outputs.docker-sha-tag }}",
+              "build_tag": "${{ steps.config.outputs.docker-build-tag }}"
+            }
+          }

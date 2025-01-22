@@ -1,0 +1,40 @@
+  name: Configure Maven
+  description: Action to configure Maven environment
+  inputs:
+    repository-base:
+      description: 'Repository Base'
+      required: true
+    mirror-url:
+      description: 'Maven Mirror URL'
+      required: true
+    release-url:
+      description: 'Release repository URL'
+      required: true
+    snapshot-url:
+      description: 'Snapshot repository URL'
+      required: true
+    username:
+      description: 'Repository Username'
+      required: true
+    password:
+      description: 'Repository Password'
+      required: true
+  runs:
+    using: composite
+    steps:
+      - name: Configure Maven
+        shell: bash
+        run: | 
+          # Ensure .m2 directory exists
+          mkdir -p ~/.m2
+
+          # Copy and configure Maven settings.xml
+          cp ${{github.action_path}}/setting.xml ~/.m2/settings.xml
+          
+          # Replace placeholders with actual values
+          sed -i "s|@@REPOSITORY_BASE@@|${{inputs.repository-base}}|g" ~/.m2/settings.xml
+          sed -i "s|@@MAVEN_USERNAME@@|${{inputs.username}}|g" ~/.m2/settings.xml
+          sed -i "s|@@MAVEN_PASSWORD@@|${{inputs.password}}|g" ~/.m2/settings.xml
+          sed -i "s|@@MAVEN_MIRROR@@|${{inputs.mirror-url}}|g" ~/.m2/settings.xml
+          sed -i "s|@@MAVEN_RELEASE_REPO@@|${{inputs.release-url}}|g" ~/.m2/settings.xml
+          sed -i "s|@@MAVEN_SNAPSHOT_REPO@@|${{inputs.snapshot-url}}|g" ~/.m2/settings.xml

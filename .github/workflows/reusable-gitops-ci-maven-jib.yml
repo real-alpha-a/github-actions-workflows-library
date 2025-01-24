@@ -151,16 +151,21 @@ jobs:
       id: xray-scan
       if: ${{success() && env.SCAN_CODE=='true'}}
       run: |
-          export JFROG CLI_LOG_LEVEL DEBUG
-          jf config add \
-          --url=https://${{ steps.config.outputs.artifactory-base}}\ 
-          --user=${{steps.config.outputs.artifactory-username}}\
-          --password=${{ steps.config.outputs.artifactory-api-key}} \
-          --interactive=false
-          jf config show
-          jf audit --watches=${{ inputs.jfrog-ci-watch}} --fail=${{ inputs.jfrog-ci-fail}} --mvn
-          jf docker scan ${{steps.config.outputs.docker-snapshot-image-base}}: ${{steps.config.outputs.docker-sha-tag}} --watches=${{ inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}}
-    
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+
+        jf config add \
+        --url=https://trialt6dmgx.jfrog.io \
+        --user=${{steps.config.outputs.artifactory-username}} \
+        --password=${{steps.config.outputs.artifactory-api-key}} \
+        --interactive=false
+
+        jf config show
+        jf audit --watches=ci-build-scan --fail=false --mvn
+
+        jf docker scan trialt6dmgx.jfrog.io/aigi-dstores-docker-snapshot-local/arc/dstores/fe/fe-api:9a4a769 \
+        --watches=ci-build-scan \
+        --fail=false
+
     - name: Cache SonarCloud packages
       if: ${{ success() && env.SCAN_CODE == 'true' }}
       uses: actions/cache@v3

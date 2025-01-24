@@ -162,12 +162,9 @@ jobs:
         --interactive=false
 
         jf config show
-        jf audit --watches=ci-build-scan --fail=false --mvn --server-timeout=600
-
-        jf docker scan trialt6dmgx.jfrog.io/aigi-dstores-docker-snapshot-local/arc/dstores/fe/fe-api:9a4a769 \
-        --watches=ci-build-scan \
-        --fail=false
-
+        jf audit --watches=${{inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}} --mvn
+        jf docker scan ${{ steps.config.outputs.docker-snapshot-image-base}}:${{ steps.config.outputs.docker-sha-tag}} --watches=${{inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}}
+        
     - name: Cache SonarCloud packages
       if: ${{ success() && env.SCAN_CODE == 'true' }}
       uses: actions/cache@v3

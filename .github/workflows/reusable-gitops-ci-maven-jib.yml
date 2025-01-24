@@ -153,7 +153,7 @@ jobs:
       run: |
           export JFROG CLI_LOG_LEVEL DEBUG
           jf config add \
-          --url=https://${{ steps.config.outputs.artifactory-base }}\ 
+          --url=https://${{ steps.config.outputs.artifactory-base}}\ 
           --user=${{steps.config.outputs.artifactory-username}}\
           --password=${{ steps.config.outputs.artifactory-api-key}} \
           --interactive=false

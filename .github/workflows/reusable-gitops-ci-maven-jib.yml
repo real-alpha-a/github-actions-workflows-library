@@ -162,8 +162,8 @@ jobs:
         --interactive=false
 
         jf config show
-        jf audit --watches=${{inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}} --mvn
-        jf docker scan ${{ steps.config.outputs.docker-snapshot-image-base}}:${{ steps.config.outputs.docker-sha-tag}} --watches=${{inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}}
+        jf audit  --fail=${{inputs.jfrog-ci-fail}} --mvn
+        jf docker scan ${{ steps.config.outputs.docker-snapshot-image-base}}:${{ steps.config.outputs.docker-sha-tag}}  --fail=${{inputs.jfrog-ci-fail}}
         
     - name: Cache SonarCloud packages
       if: ${{ success() && env.SCAN_CODE == 'true' }}

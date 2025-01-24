@@ -146,7 +146,54 @@ jobs:
       uses: jfrog/setup-jfrog-cli@v4.4.2
       with:
         version: ${{ inputs.jfrog-cli-version }}
+       
+    - name: JFrog Xray Vulnerability Scan
+      id: xray-scan
+      if: ${{success() && env.SCAN_CODE=='true'}}
+      run: |
+          export JFROG CLI_LOG_LEVEL DEBUG
+          jf config add \
+          --url=https://${{ steps.config.outputs.artifactory-base }}\ 
+          --user=${{steps.config.outputs.artifactory-username}}\
+          --password=${{ steps.config.outputs.artifactory-api-key}} \
+          --interactive=false
+          jf config show
+          jf audit --watches=${{ inputs.jfrog-ci-watch}} --fail=${{ inputs.jfrog-ci-fail}} --mvn
+          jf docker scan ${{steps.config.outputs.docker-snapshot-image-base}}: ${{steps.config.outputs.docker-sha-tag}} --watches=${{ inputs.jfrog-ci-watch}} --fail=${{inputs.jfrog-ci-fail}}
+    
+    - name: Cache SonarCloud packages
+      if: ${{ success() && env.SCAN_CODE == 'true' }}
+      uses: actions/cache@v3
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+      
+    - name: SonarCloud Compile
+      if: ${{ success() && env.SCAN_CODE == 'true' }}
+      env:
+        GITHUB TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+          pwd
+          mvn -B -V -e ${{ inputs.ci-build-args }}
+          ls -all
 
+    - name: SonarCloud Scan
+      id: sonarqube-scan
+      if: ${{ success() && env.SCAN_CODE == 'true' }}
+      uses: sonarsource/sonarqube-scan-action@v3.0.0
+      env:
+        GITHUB TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: https://sonarcloud.io
+      with:
+        args: >
+            -Dsonar.organization=mahajanatul525
+            -Dsonar.projectKey=mahajanatul525
+            -Dsonar.projectName=ch-doctor-crud-service
+            -Dsonar.qualitygate.wait=${{ inputs.sonar-qualitygate-wait }}
+            -Dsonar.java.binaries=${{ inputs.sonar-scan-dir}}
+  
     - name: Publish Docker Image
       if: ${{ success() && env.PUBLISH_IMAGE == 'true' }}
       id: publish-image

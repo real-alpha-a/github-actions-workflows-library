@@ -194,7 +194,7 @@ jobs:
         args: >
             -Dsonar.organization=mahajanatul525
             -Dsonar.projectKey=caring-horse
-            -Dsonar.projectName=ch-doctor-crud-service
+            -Dsonar.projectName=caring-horse
             -Dsonar.branch.name=master
             -Dsonar.qualitygate.wait=${{ inputs.sonar-qualitygate-wait }}
             -Dsonar.java.binaries=${{ inputs.sonar-scan-dir}}

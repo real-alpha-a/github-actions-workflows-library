@@ -195,6 +195,7 @@ jobs:
             -Dsonar.organization=mahajanatul525
             -Dsonar.projectKey=mahajanatul525
             -Dsonar.projectName=ch-doctor-crud-service
+            -Dsonar.branch.name=master
             -Dsonar.qualitygate.wait=${{ inputs.sonar-qualitygate-wait }}
             -Dsonar.java.binaries=${{ inputs.sonar-scan-dir}}
   

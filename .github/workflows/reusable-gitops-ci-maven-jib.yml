@@ -215,7 +215,7 @@ jobs:
           echo "Docker images published successfully"
 
     - name: Notify Deployment Repository
-      if: ${{ success() && env.PUBLISH_IMAGE == 'true' }}
+      if: ${{ success() }}
       uses: peter-evans/repository-dispatch@v2
       id: notify-deployment-repository
       with:

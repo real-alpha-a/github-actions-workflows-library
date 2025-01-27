@@ -192,7 +192,7 @@ jobs:
         SONAR_HOST_URL: https://sonarcloud.io
       with:
         args: >
-            -Dsonar.organization=mahajanatul525
+            -Dsonar.organization=caring-horse
             -Dsonar.projectKey=caring-horse_ch-doctor-crud-service
             -Dsonar.projectName=ch-doctor-crud-service
             -Dsonar.branch.name=master

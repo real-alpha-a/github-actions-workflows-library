@@ -220,7 +220,7 @@ jobs:
       id: notify-deployment-repository
       with:
         repository: ${{ steps.props.outputs.deployment_repo }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_CI_APP_PRIVATE_KEY }}
         event-type: ci-notification
         client-payload: |
           {

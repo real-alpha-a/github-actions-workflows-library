@@ -79,7 +79,7 @@ on:
 
 env:
   DT_TOKEN: ${{ secrets.DT_TOKEN }}
-  PUBLISH_IMAGE: true
+  PUBLISH_IMAGE: false
   SCAN_CODE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.always-scan }}
 
 jobs:

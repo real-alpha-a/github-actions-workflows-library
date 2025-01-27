@@ -11,12 +11,12 @@ on:
       always-publish:
         required: true
         type: boolean
-        default: true
+        default: false
         description: 'Whether to always publish the Docker image'
       always-scan:
         required: false
         type: boolean
-        default: true
+        default: false
         description: 'Whether to always scan the code'
       ci-build-args:
         required: false

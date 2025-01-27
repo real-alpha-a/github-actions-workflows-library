@@ -187,14 +187,14 @@ jobs:
       if: ${{ success() && env.SCAN_CODE == 'true' }}
       uses: sonarsource/sonarqube-scan-action@v3.0.0
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_HOST_URL: https://sonarcloud.io
       with:
         args: >
             -Dsonar.organization=mahajanatul525
-            -Dsonar.projectKey=caring-horse
-            -Dsonar.projectName=caring-horse
+            -Dsonar.projectKey=caring-horse_ch-doctor-crud-service
+            -Dsonar.projectName=ch-doctor-crud-service
             -Dsonar.branch.name=master
             -Dsonar.qualitygate.wait=${{ inputs.sonar-qualitygate-wait }}
             -Dsonar.java.binaries=${{ inputs.sonar-scan-dir}}
